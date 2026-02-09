@@ -83,8 +83,8 @@ function sanitizeFtsQuery(raw: string): string {
 
   return tokens
     .map((t) => {
-      // If it looks like it already has FTS5 operators, pass through
-      if (/^(AND|OR|NOT|NEAR)$/i.test(t)) return t;
+      // FTS5 operators are case-sensitive (uppercase only)
+      if (/^(AND|OR|NOT|NEAR)$/.test(t)) return t;
       // Escape quotes within the token
       const escaped = t.replace(/"/g, '""');
       // Use prefix matching for partial terms

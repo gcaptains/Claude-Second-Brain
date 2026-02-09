@@ -1,8 +1,8 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { getDb } from "./db.js";
-import { estimateTokens, truncateToTokens } from "./tokens.js";
+import { estimateTokens } from "./tokens.js";
 import type { KnowledgeEntry } from "./knowledge.js";
 
 const BRAIN_START_MARKER = "<!-- CLAUDE-BRAIN START -->";
@@ -21,14 +21,6 @@ export interface ExportOptions {
   syncTarget?: string;
   /** Dry run — return output without writing */
   dryRun?: boolean;
-}
-
-interface CategoryBudget {
-  name: string;
-  priority: number;
-  configuredBudget: number;
-  entryCount: number;
-  allocatedTokens: number;
 }
 
 interface RankedEntry {
@@ -93,6 +85,10 @@ export function syncToClaudeMd(
     diff = "(new section added)";
   }
 
+  const targetDir = dirname(target);
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true });
+  }
   writeFileSync(target, newContent, "utf-8");
   return { path: target, diff };
 }
@@ -155,6 +151,10 @@ function exportMarkdown(
 
   // Phase 1: Get all entries ranked globally
   const allRanked = getRankedEntries(db, activeCats, dense, filterCategories);
+
+  // Reserve tokens for category headers (~5 tokens each for "## Category\n")
+  const categoryHeaderOverhead = activeCats.length * 5;
+  availableBudget -= categoryHeaderOverhead;
 
   // Phase 2: Fill budget greedily, ensuring each category gets at least one entry
   const selected = greedyBudgetFill(allRanked, activeCats, availableBudget);
@@ -257,6 +257,23 @@ function greedyBudgetFill(
   return selected;
 }
 
+function getCategoryOrder(): Map<string, number> {
+  const db = getDb();
+  const catOrder = db
+    .prepare(`SELECT name FROM categories ORDER BY priority`)
+    .all() as { name: string }[];
+  return new Map(catOrder.map((c, i) => [c.name, i]));
+}
+
+function sortedCategoryKeys(
+  selected: Map<string, RankedEntry[]>,
+  orderMap: Map<string, number>
+): string[] {
+  return [...selected.keys()].sort(
+    (a, b) => (orderMap.get(a) ?? 99) - (orderMap.get(b) ?? 99)
+  );
+}
+
 function formatOutput(
   selected: Map<string, RankedEntry[]>,
   dense: boolean
@@ -269,17 +286,8 @@ function formatOutput(
 
 function formatReadable(selected: Map<string, RankedEntry[]>): string {
   const sections: string[] = ["# Personal Context\n"];
-
-  // Sort categories by the order they appear in the DB (priority)
-  const db = getDb();
-  const catOrder = db
-    .prepare(`SELECT name FROM categories ORDER BY priority`)
-    .all() as { name: string }[];
-  const orderMap = new Map(catOrder.map((c, i) => [c.name, i]));
-
-  const sortedCats = [...selected.keys()].sort(
-    (a, b) => (orderMap.get(a) ?? 99) - (orderMap.get(b) ?? 99)
-  );
+  const orderMap = getCategoryOrder();
+  const sortedCats = sortedCategoryKeys(selected, orderMap);
 
   for (const cat of sortedCats) {
     const entries = selected.get(cat)!;
@@ -296,16 +304,8 @@ function formatReadable(selected: Map<string, RankedEntry[]>): string {
 
 function formatDense(selected: Map<string, RankedEntry[]>): string {
   const sections: string[] = ["# Context\n"];
-
-  const db = getDb();
-  const catOrder = db
-    .prepare(`SELECT name FROM categories ORDER BY priority`)
-    .all() as { name: string }[];
-  const orderMap = new Map(catOrder.map((c, i) => [c.name, i]));
-
-  const sortedCats = [...selected.keys()].sort(
-    (a, b) => (orderMap.get(a) ?? 99) - (orderMap.get(b) ?? 99)
-  );
+  const orderMap = getCategoryOrder();
+  const sortedCats = sortedCategoryKeys(selected, orderMap);
 
   for (const cat of sortedCats) {
     const entries = selected.get(cat)!;

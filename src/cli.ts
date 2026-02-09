@@ -6,11 +6,11 @@ import {
   addKnowledge,
   listKnowledge,
   getByKey,
-  getKnowledge,
   updateKnowledge,
   removeKnowledge,
   restoreKnowledge,
   moveKnowledge,
+  purgeKnowledge,
   getCategoryCounts,
   getTotalCount,
 } from "./knowledge.js";
@@ -149,7 +149,6 @@ program
       }
 
       if (opts.purge) {
-        const { purgeKnowledge } = require("./knowledge.js");
         purgeKnowledge(entry.id);
         console.log(`Purged: ${category}/${key} (permanent)`);
       } else {
@@ -519,4 +518,4 @@ function readStdin(): Promise<string> {
   });
 }
 
-program.parse();
+program.parseAsync();

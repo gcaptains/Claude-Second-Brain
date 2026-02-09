@@ -77,7 +77,8 @@ function applyMigrations(db: Database.Database): void {
   const currentVersion = db.pragma("user_version", { simple: true }) as number;
 
   if (currentVersion < 1) {
-    db.exec(`
+    db.exec(`BEGIN TRANSACTION;
+
       -- Core knowledge table
       CREATE TABLE IF NOT EXISTS categories (
         name          TEXT PRIMARY KEY,
@@ -134,7 +135,7 @@ function applyMigrations(db: Database.Database): void {
         tags,
         content='knowledge',
         content_rowid='rowid',
-        tokenize='unicode61 tokenchars "-._/"'
+        tokenize="unicode61 tokenchars '-._ '"
       );
 
       -- FTS5 sync triggers
@@ -157,6 +158,8 @@ function applyMigrations(db: Database.Database): void {
           INSERT INTO knowledge_fts(rowid, key, value, tags)
           VALUES (new.rowid, new.key, new.value, new.tags);
         END;
+
+      COMMIT;
     `);
 
     db.pragma(`user_version = ${SCHEMA_VERSION}`);

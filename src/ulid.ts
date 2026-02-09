@@ -8,7 +8,7 @@ const ENCODING = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const ENCODING_LEN = ENCODING.length; // 32
 
 let lastTime = 0;
-let lastRandom = new Uint8Array(10);
+let lastRandom: Uint8Array<ArrayBufferLike> = new Uint8Array(10);
 
 function randomBytes(n: number): Uint8Array {
   const bytes = new Uint8Array(n);

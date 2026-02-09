@@ -8,14 +8,14 @@
     "brain": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('fs');const f='dist/cli.js';const c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!')){fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c);fs.chmodSync(f,0o755)}\"",
     "dev": "tsx src/cli.ts",
     "brain": "tsx src/cli.ts",
     "test": "node --test dist/**/*.test.js",
-    "ingest": "tsx src/cli.ts ingest",
-    "recall": "tsx src/cli.ts recall",
-    "sync": "tsx src/cli.ts sync",
-    "export": "tsx src/cli.ts export"
+    "import": "tsx src/cli.ts import",
+    "search": "tsx src/cli.ts search",
+    "export": "tsx src/cli.ts export",
+    "export:sync": "tsx src/cli.ts export --sync"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",

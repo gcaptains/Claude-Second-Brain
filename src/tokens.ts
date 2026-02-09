@@ -33,6 +33,6 @@ export function truncateToTokens(text: string, budget: number): string {
   const currentTokens = estimateTokens(text);
   if (currentTokens <= budget) return text;
 
-  const targetChars = Math.floor(budget * CHARS_PER_TOKEN) - 4; // room for "..."
+  const targetChars = Math.floor(budget * CHARS_PER_TOKEN) - 3; // room for "..."
   return text.slice(0, targetChars) + "...";
 }
